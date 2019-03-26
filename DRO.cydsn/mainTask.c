@@ -30,14 +30,15 @@ volatile BaseType_t sleep = pdFALSE;
 void mainTask(void* nu)
 {
 	int cc;
-
+    int tachval;
+    
 	EEPROM_Start();
 	
 	for (cc = 0; cc < 3; cc++)
 	{
 		h[cc] = EEPROM_ReadByte(cc);
 		if (h[cc] > 20 || h[cc] < 0)
-		h[cc] = cc+2;
+		    h[cc] = cc+2;
 	}
 	
 	vTaskDelay(pdMS_TO_TICKS( 1000 ));
@@ -60,6 +61,7 @@ void mainTask(void* nu)
 				zero[cc] = pdFALSE;
 			}
 		}
+        
 		cc = QuadDec_1_GetCounter();
 		if (disp[0] < cc)
 		{
@@ -95,6 +97,13 @@ void mainTask(void* nu)
 			disp[2] = cc+h[2];
 			displayVal(2, disp[2]);
 		}
+        
+        if ((Tach_ReadStatusRegister() & Tach_STATUS_CAPTURE) != 0)
+        {
+            tachval = Tach_ReadCapture();
+            iprintf("r.val=%i\xFF\xFF\xFF", tachval*10);
+		    fflush(stdout);
+        }
 	}
 }
 
