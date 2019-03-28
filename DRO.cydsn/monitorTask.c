@@ -15,6 +15,7 @@
 /* RTOS includes. */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,14 +32,17 @@ CY_ISR_PROTO(RXISR);
 extern int h[3];
 static int hind;
 extern char axis[3];
-extern TaskHandle_t mainTaskHandle;
+extern SemaphoreHandle_t TaskSync;
+extern BaseType_t hUpdated;
 
 void monitorTask(void* p)
 {
 	xTaskToNotify = xTaskGetCurrentTaskHandle( );
+    LED_Write(1);
 	
 	RXInt_StartEx(RXISR);
-	
+    vTaskDelay(pdMS_TO_TICKS( 2000 ));
+
 	UART_ClearRxBuffer();
 	buffercount = 0;
 	ulTaskNotifyTake(pdTRUE, 0);
@@ -52,53 +56,64 @@ void monitorTask(void* p)
 			switch(buf[0])
 			{
 			case 0x65:
-				if (buf[1] == 1)    // page 1
-				{
-					if (buf[2] == 6)    // OK button
-					{
-						hind = 0;
-						iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);
-						fflush(stdout);
-					}
-				}
-				else    // page 0
+                if (buffercount == 7)
                 {
-					if (buf[2] == 7)    // Long RPM press
-					{
-						vTaskSuspend(mainTaskHandle);
-                        iprintf("page 1\xFF\xFF\xFF");
-						fflush(stdout);
-						vTaskDelay(pdMS_TO_TICKS( 20 ));
-						iprintf("x.val=%i\xFF\xFF\xFF", h[0]);
-						fflush(stdout);
-						iprintf("y.val=%i\xFF\xFF\xFF", h[1]);
-						fflush(stdout);
-						iprintf("z.val=%i\xFF\xFF\xFF", h[2]);
-						fflush(stdout);
-					}
-                    else
-				        zero[buf[2]/2-1] = pdTRUE;
+    				if (buf[1] == 1)    // page 1
+    				{
+    					if (buf[2] == 6)    // OK button
+    					{
+    						hind = 0;
+    						iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);
+    						fflush(stdout);
+    					}
+    				}
+    				else    // page 0
+                    {
+    					if (buf[2] == 7)    // Long RPM press
+    					{
+    						xSemaphoreTake(TaskSync, portMAX_DELAY);
+                            LED_Write(0);
+                            iprintf("page 1\xFF\xFF\xFF");
+    						fflush(stdout);
+    						vTaskDelay(pdMS_TO_TICKS( 20 ));
+    						iprintf("x.val=%i\xFF\xFF\xFF", h[0]);
+    						fflush(stdout);
+    						iprintf("y.val=%i\xFF\xFF\xFF", h[1]);
+    						fflush(stdout);
+    						iprintf("z.val=%i\xFF\xFF\xFF", h[2]);
+    						fflush(stdout);
+    					}
+                        else
+    				        zero[buf[2]/2-1] = pdTRUE;
+                    }
                 }
 				break;
 			case 0x68:
-				sleep  = pdFALSE;
+                if (buffercount == 9)
+				    sleep  = pdFALSE;
 				break;
-			case 71:
-				h[hind] = buf[1];
-				if (hind++ < 3) // get remaining values
-				{
-					iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);
-					fflush(stdout);
-				}
-				else    // go back to page 0 and resume main task
-				{
-					iprintf("page 0\xFF\xFF\xFF");
-					fflush(stdout);
-					vTaskDelay(pdMS_TO_TICKS( 20 ));
-                    vTaskResume(mainTaskHandle);
-				}
+			case 0x71:
+                if (buffercount == 8)
+                {
+    				h[hind] = buf[1];
+    				if (++hind < 3) // get remaining values
+    				{
+    					iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);
+    					fflush(stdout);
+    				}
+    				else    // go back to page 0 and resume main task
+    				{
+    					iprintf("page 0\xFF\xFF\xFF");
+    					fflush(stdout);
+    					vTaskDelay(pdMS_TO_TICKS( 20 ));
+                        hUpdated = pdTRUE;
+                        xSemaphoreGive(TaskSync);
+    				}
+                }
+                break;
 			case 0x86:
-				sleep = pdTRUE;
+                if (buffercount == 4)
+				    sleep = pdTRUE;
 				break;
 			default:
 				break;
@@ -113,9 +128,8 @@ void monitorTask(void* p)
 CY_ISR(RXISR)
 {
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-	uint8_t readStatus = UART_RXSTATUS_REG;
 	
-	if ((readStatus & UART_RX_STS_FIFO_NOTEMPTY) != 0u)
+	if ((UART_RXSTATUS_REG & UART_RX_STS_FIFO_NOTEMPTY) != 0u)
 	{
 		if (FFCount != 3)
 		{
@@ -127,16 +141,16 @@ CY_ISR(RXISR)
 				else
 				    FFCount = 0;
 				buffercount++;
-				if (FFCount == 3)
+				if (FFCount == 3 || buffercount == 16)
 				{
 					vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
 					break;
 				}
 			}
-			while((readStatus & UART_RX_STS_FIFO_NOTEMPTY) != 0u);
+			while((UART_RXSTATUS_REG & UART_RX_STS_FIFO_NOTEMPTY) != 0u);
 		}
-		RXInt_ClearPending();
 	}
+	RXInt_ClearPending();
 }
 
 /* [] END OF FILE */

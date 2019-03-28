@@ -334,6 +334,7 @@
       <Data key="c4a69e7d-ee19-4f5f-bb30-3bed3a30daee" value="QS2" />
       <Data key="cc840720-bf34-48e0-bed9-9797aa6d2e0d" value="TachIn" />
       <Data key="d052287a-40ab-4a22-9016-57f2ab2d71de" value="QS3" />
+      <Data key="e851a3b9-efb8-48be-bbb8-b303b216c393" value="LED" />
       <Data key="ed092b9b-d398-4703-be89-cebf998501f6" value="Tx_1" />
     </Group>
   </Group>
@@ -1564,7 +1565,7 @@
     </Group>
     <Group key="77715107-f8d5-47e5-a629-0fb83101ac6b">
       <Group key="0">
-        <Data key="Port Format" value="1,7" />
+        <Data key="Port Format" value="12,2" />
       </Group>
     </Group>
     <Group key="c4a69e7d-ee19-4f5f-bb30-3bed3a30daee">
@@ -1581,6 +1582,11 @@
       </Group>
       <Group key="1">
         <Data key="Port Format" value="3,6" />
+      </Group>
+    </Group>
+    <Group key="e851a3b9-efb8-48be-bbb8-b303b216c393">
+      <Group key="0">
+        <Data key="Port Format" value="3,1" />
       </Group>
     </Group>
     <Group key="ed092b9b-d398-4703-be89-cebf998501f6">

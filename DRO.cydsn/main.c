@@ -20,18 +20,21 @@
 extern void mainTask(void*);
 extern void monitorTask(void*);
 void prvHardwareSetup( void );
-TaskHandle_t mainTaskHandle;
+SemaphoreHandle_t TaskSync;
 
 int main(void)
 {
 	prvHardwareSetup();
+    
+    TaskSync = xSemaphoreCreateMutex();
+    
 	/* Create one of the two tasks. */
 	xTaskCreate(mainTask,		/* Pointer to the function that implements the task. */
 	"Main",	    /* Text name for the task.  This is to facilitate debugging only. */
 	256,		/* Stack depth - most small microcontrollers will use much less stack than this. */
 	NULL,		/* We are not using the task parameter. */
 	1,			/* This task will run at priority 1. */
-	&mainTaskHandle );
+	NULL );
 	
 	xTaskCreate(monitorTask,		/* Pointer to the function that implements the task. */
 	"Monitor",	    /* Text name for the task.  This is to facilitate debugging only. */

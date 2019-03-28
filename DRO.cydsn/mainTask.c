@@ -15,6 +15,8 @@
 /* RTOS includes. */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
+
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -26,6 +28,15 @@ volatile static int disp[3] = {0, 0, 0};
 int h[3] = {4, 3, 2};
 volatile BaseType_t zero[3] = {pdFALSE, pdFALSE, pdFALSE};
 volatile BaseType_t sleep = pdFALSE;
+extern SemaphoreHandle_t TaskSync;
+volatile BaseType_t hUpdated = pdFALSE;
+
+void ResetValues()
+{
+	displayVal(0, disp[0]);
+	displayVal(1, disp[1]);
+	displayVal(2, disp[2]);
+}
 
 void mainTask(void* nu)
 {
@@ -41,18 +52,24 @@ void mainTask(void* nu)
 		    h[cc] = cc+2;
 	}
 	
-	vTaskDelay(pdMS_TO_TICKS( 1000 ));
-	iprintf("ussp=60\xFF\xFF\xFF");    // sleep after 10 minutes of inactivity
+	vTaskDelay(pdMS_TO_TICKS( 2000 ));
+	iprintf("ussp=600\xFF\xFF\xFF");    // sleep after 10 minutes of inactivity
 	iprintf("thup=1\xFF\xFF\xFF");     // wake on touch
 	//iprintf("usup=1\xFF\xFF\xFF");     // wake on serial
 	fflush(stdout);
-	displayVal(0, disp[0]);
-	displayVal(1, disp[1]);
-	displayVal(2, disp[2]);
+    ResetValues();
+    iprintf("r.val=%i\xFF\xFF\xFF", 0);
 
 	for(;;)
 	{
 		vTaskDelay(pdMS_TO_TICKS( 20 ));
+        xSemaphoreTake(TaskSync, portMAX_DELAY);
+        if (hUpdated)
+        {
+            ResetValues();
+            hUpdated = pdFALSE;
+        }
+        
 		for (cc = 0; cc < 3; cc++)
 		{
 			if (zero[cc])
@@ -104,6 +121,7 @@ void mainTask(void* nu)
             iprintf("r.val=%i\xFF\xFF\xFF", tachval*10);
 		    fflush(stdout);
         }
+        xSemaphoreGive(TaskSync);
 	}
 }
 
