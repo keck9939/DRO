@@ -35,6 +35,8 @@ extern char axis[3];
 extern SemaphoreHandle_t TaskSync;
 extern BaseType_t hUpdated;
 
+void SaveData();
+
 void monitorTask(void* p)
 {
 	xTaskToNotify = xTaskGetCurrentTaskHandle( );
@@ -105,6 +107,7 @@ void monitorTask(void* p)
     				{
     					iprintf("page 0\xFF\xFF\xFF");
     					fflush(stdout);
+                        SaveData();
     					vTaskDelay(pdMS_TO_TICKS( 20 ));
                         hUpdated = pdTRUE;
                         xSemaphoreGive(TaskSync);
@@ -122,6 +125,17 @@ void monitorTask(void* p)
 		buffercount = 0;
 		FFCount = 0;
 	}
+}
+
+void SaveData()
+{
+    int i;
+    
+    for (i = 0; i < 3; i++)
+    {
+        if (EEPROM_ReadByte(i) != h[i])
+            EEPROM_WriteByte(h[i], i);
+    }
 }
 
 

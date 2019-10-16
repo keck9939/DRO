@@ -55,16 +55,11 @@ void mainTask(void* nu)
 	}
 	
 	vTaskDelay(pdMS_TO_TICKS( 2000 ));
-	iprintf("ussp=600\xFF\xFF\xFF");    // sleep after 10 minutes of inactivity
+	iprintf("ussp=600\xFF\xFF\xFF");   // sleep after 10 minutes of inactivity
 	iprintf("thup=1\xFF\xFF\xFF");     // wake on touch
-	//iprintf("usup=1\xFF\xFF\xFF");     // wake on serial
 	fflush(stdout);
     ResetValues();
 		
-    QuadDec_1_SetCounter(1000);
-	QuadDec_2_SetCounter(2000);
-	QuadDec_3_SetCounter(3000);
-
 	for(;;)
 	{
 		vTaskDelay(pdMS_TO_TICKS( 20 ));
