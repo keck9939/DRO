@@ -30,18 +30,20 @@ volatile BaseType_t zero[3] = {pdFALSE, pdFALSE, pdFALSE};
 volatile BaseType_t sleep = pdFALSE;
 extern SemaphoreHandle_t TaskSync;
 volatile BaseType_t hUpdated = pdFALSE;
+static int tachval;
 
 void ResetValues()
 {
 	displayVal(0, disp[0]);
 	displayVal(1, disp[1]);
 	displayVal(2, disp[2]);
+    iprintf("r.val=%i\xFF\xFF\xFF", 0);
+	fflush(stdout);
 }
 
 void mainTask(void* nu)
 {
 	int cc;
-    int tachval;
     
 	EEPROM_Start();
 	
@@ -58,7 +60,10 @@ void mainTask(void* nu)
 	//iprintf("usup=1\xFF\xFF\xFF");     // wake on serial
 	fflush(stdout);
     ResetValues();
-    iprintf("r.val=%i\xFF\xFF\xFF", 0);
+		
+    QuadDec_1_SetCounter(1000);
+	QuadDec_2_SetCounter(2000);
+	QuadDec_3_SetCounter(3000);
 
 	for(;;)
 	{
@@ -115,12 +120,13 @@ void mainTask(void* nu)
 			displayVal(2, disp[2]);
 		}
         
-        if ((Tach_ReadStatusRegister() & Tach_STATUS_CAPTURE) != 0)
+        while ((Tach_ReadStatusRegister() & Tach_STATUS_FIFONEMP) != 0)
         {
             tachval = Tach_ReadCapture();
-            iprintf("r.val=%i\xFF\xFF\xFF", tachval*10);
-		    fflush(stdout);
         }
+        iprintf("r.val=%i\xFF\xFF\xFF", tachval*10);
+		fflush(stdout);
+        
         xSemaphoreGive(TaskSync);
 	}
 }
@@ -128,7 +134,7 @@ void mainTask(void* nu)
 char axis[] = {'x', 'y', 'z'};
 void displayVal(int ax, int disp)
 {
-	int rem, quo;
+	div_t result;
 	int ld;
 	if (sleep)
 	{
@@ -139,11 +145,11 @@ void displayVal(int ax, int disp)
 	char neg = disp<0;
 	ld = ((disp&1) == 1 ? 5 : 0);
 	disp = disp/2;
-	rem = remquo(abs(disp), 1000, &quo);
+	result = div(abs(disp), 1000);
 	if (neg)
-	    iprintf("%c.txt=\"-%i.%03i%i\"\xFF\xFF\xFF", axis[ax], quo, rem, ld);
+	    iprintf("%c.txt=\"-%i.%03i%i\"\xFF\xFF\xFF", axis[ax], result.quot, result.rem, ld);
 	else
-	    iprintf("%c.txt=\"%i.%03i%i\"\xFF\xFF\xFF", axis[ax], quo, rem, ld);
+	    iprintf("%c.txt=\"%i.%03i%i\"\xFF\xFF\xFF", axis[ax], result.quot, result.rem, ld);
 	fflush(stdout);
 }
 
@@ -168,10 +174,11 @@ void ZeroAxis(int ax)
 		delta = QuadDec_3_GetCounter() - disp[2];;
 		disp[2] = 0;
 		QuadDec_3_SetCounter(delta);
-		displayVal(2, disp[1]);
+		displayVal(2, disp[2]);
 		break;
 	}
 }
+
 
 
 /* [] END OF FILE */

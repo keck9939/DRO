@@ -149,6 +149,10 @@ CY_ISR(RXISR)
 			}
 			while((UART_RXSTATUS_REG & UART_RX_STS_FIFO_NOTEMPTY) != 0u);
 		}
+        else
+        {
+ 			vTaskNotifyGiveFromISR( xTaskToNotify, &xHigherPriorityTaskWoken );
+        }
 	}
 	RXInt_ClearPending();
 }
