@@ -30,7 +30,8 @@ volatile BaseType_t zero[3] = {pdFALSE, pdFALSE, pdFALSE};
 volatile BaseType_t sleep = pdFALSE;
 extern SemaphoreHandle_t TaskSync;
 volatile BaseType_t hUpdated = pdFALSE;
-static int tachval;
+static int tachVal;
+static int lastTachVal;
 
 void ResetValues()
 {
@@ -117,10 +118,15 @@ void mainTask(void* nu)
         
         while ((Tach_ReadStatusRegister() & Tach_STATUS_FIFONEMP) != 0)
         {
-            tachval = Tach_ReadCapture();
+            tachVal = Tach_ReadCapture();
         }
-        iprintf("r.val=%i\xFF\xFF\xFF", tachval*10);
-		fflush(stdout);
+        
+        if (!(tachVal == 0 && lastTachVal == 0))
+        {
+            iprintf("r.val=%i\xFF\xFF\xFF", tachVal*10);
+		    fflush(stdout);
+            lastTachVal = tachVal;
+        }
         
         xSemaphoreGive(TaskSync);
 	}
