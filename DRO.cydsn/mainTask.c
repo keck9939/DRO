@@ -35,8 +35,13 @@ static int lastTachVal;
 
 void ResetValues()
 {
-	displayVal(0, disp[0]);
+#ifdef LATHE
+    displayVal(0, -disp[0]);
+	displayVal(1, -2*disp[0]);
+#else
+    displayVal(0, disp[0]);
 	displayVal(1, disp[1]);
+#endif
 	displayVal(2, disp[2]);
     iprintf("r.val=%i\xFF\xFF\xFF", 0);
 	fflush(stdout);
@@ -84,14 +89,25 @@ void mainTask(void* nu)
 		if (disp[0] < cc)
 		{
 			disp[0] = cc;
+#ifdef LATHE
+			displayVal(0, -disp[0]);
+            displayVal(1, -disp[0]*2);
+#else
 			displayVal(0, disp[0]);
+#endif
 		}
 		else if (disp[0] > cc+h[0])
 		{
 			disp[0] = cc+h[0];
+#ifdef LATHE
+			displayVal(0, -disp[0]);
+            displayVal(1, -disp[0]*2);
+#else
 			displayVal(0, disp[0]);
+#endif
 		}
 		
+#ifndef LATHE
 		cc = QuadDec_2_GetCounter();
 		if (disp[1] < cc)
 		{
@@ -103,8 +119,9 @@ void mainTask(void* nu)
 			disp[1] = cc+h[1];
 			displayVal(1, disp[1]);
 		}
+#endif
 
-		cc = QuadDec_3_GetCounter();
+        cc = QuadDec_3_GetCounter();
 		if (disp[2] < cc)
 		{
 			disp[2] = cc;
@@ -115,7 +132,7 @@ void mainTask(void* nu)
 			disp[2] = cc+h[2];
 			displayVal(2, disp[2]);
 		}
-        
+
         while ((Tach_ReadStatusRegister() & Tach_STATUS_FIFONEMP) != 0)
         {
             tachVal = Tach_ReadCapture();
@@ -163,13 +180,18 @@ void ZeroAxis(int ax)
 		delta = QuadDec_1_GetCounter() - disp[0];;
 		disp[0] = 0;
 		QuadDec_1_SetCounter(delta);
-		displayVal(0, disp[0]);
+		displayVal(0, 0);
+#ifdef LATHE
+        displayVal(1, 0);
+#endif
 		break;
 	case 1:
+#ifndef LATHE
 		delta = QuadDec_2_GetCounter() - disp[1];;
 		disp[1] = 0;
 		QuadDec_2_SetCounter(delta);
 		displayVal(1, disp[1]);
+#endif
 		break;
 	case 2:
 		delta = QuadDec_3_GetCounter() - disp[2];;

@@ -80,8 +80,10 @@ void monitorTask(void* p)
     						vTaskDelay(pdMS_TO_TICKS( 20 ));
     						iprintf("x.val=%i\xFF\xFF\xFF", h[0]);
     						fflush(stdout);
+#ifndef LATHE
     						iprintf("y.val=%i\xFF\xFF\xFF", h[1]);
     						fflush(stdout);
+#endif
     						iprintf("z.val=%i\xFF\xFF\xFF", h[2]);
     						fflush(stdout);
     					}
@@ -100,8 +102,13 @@ void monitorTask(void* p)
     				h[hind] = buf[1];
     				if (++hind < 3) // get remaining values
     				{
-    					iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);
-    					fflush(stdout);
+#ifdef LATHE
+                        if (axis[hind] == 'y')
+                            hind++;
+#endif
+                            
+                        iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);
+        			    fflush(stdout);
     				}
     				else    // go back to page 0 and resume main task
     				{
