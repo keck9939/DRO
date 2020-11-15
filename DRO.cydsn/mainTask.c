@@ -25,9 +25,11 @@ void displayVal(int ax, int disp);
 void ZeroAxis(int ax);
 
 volatile static int disp[3] = {0, 0, 0};
+// the h values are the hysteresis to allow for backlash in the leadscrews
 int h[3] = {4, 3, 2};
 volatile BaseType_t zero[3] = {pdFALSE, pdFALSE, pdFALSE};
 volatile BaseType_t sleep = pdFALSE;
+// used to allow the monitor task to block the main task when it is doing something.
 extern SemaphoreHandle_t TaskSync;
 volatile BaseType_t hUpdated = pdFALSE;
 static int tachVal;
@@ -70,13 +72,13 @@ void mainTask(void* nu)
 	{
 		vTaskDelay(pdMS_TO_TICKS( 20 ));
         xSemaphoreTake(TaskSync, portMAX_DELAY);
-        if (hUpdated)
+        if (hUpdated)   // hysteresis values change?
         {
             ResetValues();
             hUpdated = pdFALSE;
         }
         
-		for (cc = 0; cc < 3; cc++)
+		for (cc = 0; cc < 3; cc++)  // check for axis re-zeroed
 		{
 			if (zero[cc])
 			{
@@ -100,8 +102,8 @@ void mainTask(void* nu)
 		{
 			disp[0] = cc+h[0];
 #ifdef LATHE
-			displayVal(0, -disp[0]);
-            displayVal(1, -disp[0]*2);
+			displayVal(0, -disp[0]);    // for the lathe, the X display is used to display the radius
+            displayVal(1, -disp[0]*2);  // for the lathe, the Y display is used instead to display diameter
 #else
 			displayVal(0, disp[0]);
 #endif

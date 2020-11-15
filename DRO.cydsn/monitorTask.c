@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// This is used to allow the ISR to wake the input processing task when
+// something is received from the display.
 static TaskHandle_t xTaskToNotify = NULL;
 volatile static uint8 buf[16];
 volatile static int buffercount;
@@ -40,7 +42,7 @@ void SaveData();
 void monitorTask(void* p)
 {
 	xTaskToNotify = xTaskGetCurrentTaskHandle( );
-    LED_Write(1);
+    LED_Write(1);   // debug aid
 	
 	RXInt_StartEx(RXISR);
     vTaskDelay(pdMS_TO_TICKS( 2000 ));
@@ -51,21 +53,23 @@ void monitorTask(void* p)
 	
 	for(;;)
 	{
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+// wait for data from display
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 		
-		if (buffercount > 3)
+// we need more than 3 characters since any message will contain 3 0xff's.
+        if (buffercount > 3)
 		{
 			switch(buf[0])
 			{
-			case 0x65:
-                if (buffercount == 7)
+			case 0x65:  // touch event
+                if (buffercount == 7)   // lenght should be 7
                 {
     				if (buf[1] == 1)    // page 1
     				{
-    					if (buf[2] == 6)    // OK button
+    					if (buf[2] == 6)    // OK button on page 1 (set hysteresis)
     					{
     						hind = 0;
-    						iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);
+    						iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);  // request x axis value
     						fflush(stdout);
     					}
     				}
@@ -75,31 +79,31 @@ void monitorTask(void* p)
     					{
     						xSemaphoreTake(TaskSync, portMAX_DELAY);
                             LED_Write(0);
-                            iprintf("page 1\xFF\xFF\xFF");
+                            iprintf("page 1\xFF\xFF\xFF");  // select page
     						fflush(stdout);
     						vTaskDelay(pdMS_TO_TICKS( 20 ));
-    						iprintf("x.val=%i\xFF\xFF\xFF", h[0]);
+    						iprintf("x.val=%i\xFF\xFF\xFF", h[0]);  // hysteresis for X
     						fflush(stdout);
 #ifndef LATHE
-    						iprintf("y.val=%i\xFF\xFF\xFF", h[1]);
+    						iprintf("y.val=%i\xFF\xFF\xFF", h[1]);  // hysteresis for Y
     						fflush(stdout);
 #endif
-    						iprintf("z.val=%i\xFF\xFF\xFF", h[2]);
+    						iprintf("z.val=%i\xFF\xFF\xFF", h[2]);  // hysteresis for Z
     						fflush(stdout);
     					}
-                        else
-    				        zero[buf[2]/2-1] = pdTRUE;
+                        else    // long press on axis
+    				        zero[buf[2]/2-1] = pdTRUE;  // zero correspoinding axis
                     }
                 }
 				break;
-			case 0x68:
+			case 0x68:  // exit sleep
                 if (buffercount == 9)
 				    sleep  = pdFALSE;
 				break;
-			case 0x71:
-                if (buffercount == 8)
+			case 0x71:  // returned data
+                if (buffercount == 8)   // must be 8 long
                 {
-    				h[hind] = buf[1];
+    				h[hind] = buf[1];   // read hysteresis values as they are sent
     				if (++hind < 3) // get remaining values
     				{
 #ifdef LATHE
@@ -107,7 +111,7 @@ void monitorTask(void* p)
                             hind++;
 #endif
                             
-                        iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);
+                        iprintf("get %c.val\xFF\xFF\xFF", axis[hind]);  // request value
         			    fflush(stdout);
     				}
     				else    // go back to page 0 and resume main task
@@ -117,11 +121,11 @@ void monitorTask(void* p)
                         SaveData();
     					vTaskDelay(pdMS_TO_TICKS( 20 ));
                         hUpdated = pdTRUE;
-                        xSemaphoreGive(TaskSync);
+                        xSemaphoreGive(TaskSync);   // release the main task
     				}
                 }
                 break;
-			case 0x86:
+			case 0x86:  // display has gone to sleep
                 if (buffercount == 4)
 				    sleep = pdTRUE;
 				break;
@@ -146,6 +150,8 @@ void SaveData()
 }
 
 
+// UART receive ISR. The Nextion has a syncronization system of 3 0xff's in a row
+// which actually proves to be surprisingly awkward.
 CY_ISR(RXISR)
 {
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
